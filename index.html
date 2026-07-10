@@ -3,78 +3,95 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>創作用 設定管理ノート</title>
+  <title>創作設定アトリエ</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="hero">
     <div>
-      <p class="eyebrow">Public sample creative tool</p>
-      <h1>創作用 設定管理ノート</h1>
-      <p class="lead">キャラクター、話数メモ、画像生成プロンプトをiPadのSafariだけで管理できます。</p>
+      <p class="eyebrow">Private creative setting manager</p>
+      <h1>創作設定アトリエ</h1>
+      <p class="lead">ラクリマテイル、ティア・ノヴァなどの作品ごとに、キャラクター・話数メモ・世界観・画像生成プロンプトを整理する非公開用ノートです。</p>
     </div>
-    <div class="notice" role="note">
-      <strong>公開用リポジトリ向け</strong>
-      <span>本編設定や秘密情報は入れず、サンプルデータだけを入れています。</span>
-    </div>
+    <section class="backup-panel" aria-labelledby="backup-title">
+      <h2 id="backup-title">保存とバックアップ</h2>
+      <p id="save-status" class="save-status" aria-live="polite">自動保存待機中</p>
+      <div class="backup-actions">
+        <button class="secondary" type="button" id="export-json">JSONを書き出す</button>
+        <label class="secondary file-button" for="import-json">JSONを読み込む</label>
+        <input id="import-json" type="file" accept="application/json,.json">
+      </div>
+      <p class="small">データはこのブラウザのlocalStorageに保存されます。iPadでは定期的にJSONを書き出してください。</p>
+    </section>
   </header>
 
   <main class="app-shell">
-    <section class="panel guide" aria-labelledby="guide-title">
-      <h2 id="guide-title">はじめての使い方</h2>
-      <ol>
-        <li>下のタブから登録したい種類を選びます。</li>
-        <li>フォームに入力して「保存する」を押します。</li>
-        <li>登録した内容はこのブラウザ内に保存されます。</li>
-        <li>公開しても他の人の端末にはあなたの入力内容は表示されません。</li>
-      </ol>
-      <p class="small">※ Safariの履歴・Webサイトデータを消すと、保存した内容も消えることがあります。</p>
+    <section class="panel project-panel" aria-labelledby="project-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="project-title">作品管理</h2>
+          <p>作品を選ぶと、各タブの内容が作品ごとに切り替わります。</p>
+        </div>
+        <button class="danger ghost" type="button" id="delete-project">選択中の作品を削除</button>
+      </div>
+      <div class="project-tools">
+        <label class="field compact">
+          <span>現在の作品</span>
+          <select id="project-select"></select>
+        </label>
+        <form id="project-form" class="inline-form">
+          <label class="field compact">
+            <span>新しい作品名</span>
+            <input id="project-name" type="text" placeholder="例：ラクリマテイル" required>
+          </label>
+          <button class="primary" type="submit">作品を追加</button>
+        </form>
+      </div>
     </section>
 
-    <nav class="tabs" aria-label="登録する内容の切り替え">
+    <nav class="tabs" aria-label="管理する設定の切り替え">
       <button class="tab-button active" type="button" data-tab="characters">キャラクター</button>
       <button class="tab-button" type="button" data-tab="episodes">話数メモ</button>
+      <button class="tab-button" type="button" data-tab="worlds">世界観・設定</button>
       <button class="tab-button" type="button" data-tab="prompts">画像プロンプト</button>
     </nav>
 
     <section class="workspace">
       <form class="panel form-card" id="entry-form">
         <div class="form-heading">
-          <h2 id="form-title">キャラクター設定を登録</h2>
-          <p id="form-help">公開してよい仮名・サンプル設定で試してください。</p>
+          <p class="current-work" id="current-work-label"></p>
+          <h2 id="form-title">キャラクターを登録</h2>
+          <p id="form-help">本編設定や非公開メモを、作品内だけに保存します。</p>
         </div>
         <div id="fields" class="fields"></div>
         <div class="actions">
           <button class="primary" type="submit" id="save-button">保存する</button>
           <button class="secondary" type="button" id="cancel-edit" hidden>編集をやめる</button>
-          <button class="secondary" type="button" id="reset-samples">サンプルに戻す</button>
+          <button class="secondary" type="reset">入力をクリア</button>
         </div>
       </form>
 
       <section class="panel list-card" aria-labelledby="list-title">
         <div class="list-heading">
           <div>
+            <p class="current-work" id="list-work-label"></p>
             <h2 id="list-title">登録済み</h2>
             <p id="count-label">0件</p>
           </div>
           <button class="danger" type="button" id="clear-current">このタブを全削除</button>
         </div>
+        <label class="search-box">
+          <span>検索</span>
+          <input id="search-input" type="search" placeholder="名前・本文・メモから検索">
+        </label>
         <div id="entry-list" class="entry-list" aria-live="polite"></div>
       </section>
     </section>
   </main>
 
-  <template id="text-field-template">
+  <template id="field-template">
     <label class="field">
       <span></span>
-      <input type="text">
-    </label>
-  </template>
-
-  <template id="textarea-field-template">
-    <label class="field">
-      <span></span>
-      <textarea rows="4"></textarea>
     </label>
   </template>
 
