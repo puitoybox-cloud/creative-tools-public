@@ -52,6 +52,7 @@ const sampleData = {
 };
 
 let currentTab = "characters";
+let editingState = null;
 let data = loadData();
 
 const form = document.querySelector("#entry-form");
@@ -60,6 +61,8 @@ const listRoot = document.querySelector("#entry-list");
 const formTitle = document.querySelector("#form-title");
 const formHelp = document.querySelector("#form-help");
 const countLabel = document.querySelector("#count-label");
+const saveButton = document.querySelector("#save-button");
+const cancelEditButton = document.querySelector("#cancel-edit");
 
 function loadData() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -77,9 +80,12 @@ function saveData() {
 
 function render() {
   const definition = tabDefinitions[currentTab];
-  formTitle.textContent = definition.formTitle;
+  const isEditingCurrentTab = editingState?.tab === currentTab;
+  formTitle.textContent = isEditingCurrentTab ? `${definition.label}を編集中` : definition.formTitle;
   formHelp.textContent = definition.help;
   renderFields(definition);
+  if (isEditingCurrentTab) fillFormFromEntry(editingState.id);
+  updateFormMode();
   renderList(definition);
   document.querySelectorAll(".tab-button").forEach((button) => {
     button.classList.toggle("active", button.dataset.tab === currentTab);
@@ -141,6 +147,13 @@ function renderList(definition) {
 
     const actions = document.createElement("div");
     actions.className = "card-actions";
+    const editButton = document.createElement("button");
+    editButton.className = "secondary";
+    editButton.type = "button";
+    editButton.textContent = "編集";
+    editButton.addEventListener("click", () => startEditing(entry.id));
+    actions.append(editButton);
+
     const deleteButton = document.createElement("button");
     deleteButton.className = "danger";
     deleteButton.type = "button";
@@ -153,8 +166,54 @@ function renderList(definition) {
   });
 }
 
+function findEntry(tab, id) {
+  return (data[tab] ?? []).find((entry) => entry.id === id);
+}
+
+function fillFormFromEntry(id) {
+  const entry = findEntry(currentTab, id);
+  if (!entry) {
+    stopEditing();
+    return;
+  }
+
+  tabDefinitions[currentTab].fields.forEach((field) => {
+    const input = form.elements[field.name];
+    if (input) input.value = entry[field.name] || "";
+  });
+}
+
+function updateFormMode() {
+  const isEditingCurrentTab = editingState?.tab === currentTab;
+  saveButton.textContent = isEditingCurrentTab ? "変更を保存" : "保存する";
+  cancelEditButton.hidden = !isEditingCurrentTab;
+}
+
+function startEditing(id) {
+  const entry = findEntry(currentTab, id);
+  if (!entry) return;
+
+  editingState = { tab: currentTab, id };
+  formTitle.textContent = `${tabDefinitions[currentTab].label}を編集中`;
+  fillFormFromEntry(id);
+  updateFormMode();
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+  const firstInput = form.querySelector("input, textarea");
+  firstInput?.focus({ preventScroll: true });
+}
+
+function stopEditing({ resetForm = false } = {}) {
+  editingState = null;
+  formTitle.textContent = tabDefinitions[currentTab].formTitle;
+  if (resetForm) form.reset();
+  updateFormMode();
+}
+
 function deleteEntry(id) {
   data[currentTab] = data[currentTab].filter((entry) => entry.id !== id);
+  if (editingState?.tab === currentTab && editingState.id === id) {
+    stopEditing({ resetForm: true });
+  }
   saveData();
   render();
 }
@@ -162,27 +221,40 @@ function deleteEntry(id) {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const formData = new FormData(form);
-  const entry = { id: crypto.randomUUID() };
+  const isEditingCurrentTab = editingState?.tab === currentTab;
+  const entry = { id: isEditingCurrentTab ? editingState.id : crypto.randomUUID() };
   tabDefinitions[currentTab].fields.forEach((field) => {
     entry[field.name] = String(formData.get(field.name) || "").trim();
   });
-  data[currentTab] = [entry, ...(data[currentTab] ?? [])];
+  if (isEditingCurrentTab) {
+    data[currentTab] = (data[currentTab] ?? []).map((savedEntry) => (
+      savedEntry.id === editingState.id ? entry : savedEntry
+    ));
+    stopEditing();
+  } else {
+    data[currentTab] = [entry, ...(data[currentTab] ?? [])];
+  }
   saveData();
   form.reset();
-  renderList(tabDefinitions[currentTab]);
+  render();
 });
 
 document.querySelectorAll(".tab-button").forEach((button) => {
   button.addEventListener("click", () => {
     currentTab = button.dataset.tab;
-    form.reset();
+    stopEditing({ resetForm: true });
     render();
   });
+});
+
+cancelEditButton.addEventListener("click", () => {
+  stopEditing({ resetForm: true });
 });
 
 document.querySelector("#clear-current").addEventListener("click", () => {
   if (!confirm("このタブの登録内容をすべて削除しますか？")) return;
   data[currentTab] = [];
+  if (editingState?.tab === currentTab) stopEditing({ resetForm: true });
   saveData();
   render();
 });
@@ -191,7 +263,7 @@ document.querySelector("#reset-samples").addEventListener("click", () => {
   if (!confirm("保存内容をサンプルデータに戻しますか？")) return;
   data = structuredClone(sampleData);
   saveData();
-  form.reset();
+  stopEditing({ resetForm: true });
   render();
 });
 
